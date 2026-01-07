@@ -192,29 +192,12 @@ async function syncToSlide(targetSlide, audioTimestamp) {
         soundStarted = true;
         isPresentationRunning = true;
 
-        // Advance to first slide immediately (before trying audio)
-        currentSlide = 0;
-        nextSlideLocal();
-
         // Hide the button during auto-presentation
         nextBtn.style.display = 'none';
 
-        // Start audio playback
-        if (audioPlayer && !audioPlayer.playing) {
-            try {
-                // Sync audio to the timestamp if provided
-                if (audioTimestamp !== undefined) {
-                    audioPlayer.currentTime = audioTimestamp;
-                }
-                await audioPlayer.play();
-                audioStartTime = Date.now();
-                console.log('Audio started (synced)');
-            } catch (error) {
-                console.error('Error playing audio - autoplay blocked. Using timer fallback:', error);
-                // Start timer-based sync when audio can't play
-                startSyncTimer();
-            }
-        }
+        // Advance to first slide - audio will start in nextSlideLocal()
+        currentSlide = 0;
+        nextSlideLocal();
     } else if (targetSlide > currentSlide) {
         // Sync forward progression (someone else advanced)
         // Make sure presentation is running
@@ -224,24 +207,9 @@ async function syncToSlide(targetSlide, audioTimestamp) {
             soundStarted = true;
             isPresentationRunning = true;
             nextBtn.style.display = 'none';
-
-            // Start audio if not already playing
-            if (audioPlayer && !audioPlayer.playing) {
-                try {
-                    if (audioTimestamp !== undefined) {
-                        audioPlayer.currentTime = audioTimestamp;
-                    }
-                    await audioPlayer.play();
-                    console.log('Audio started (synced)');
-                } catch (error) {
-                    console.error('Error playing audio - autoplay blocked. Using timer fallback:', error);
-                    // Start timer-based sync when audio can't play
-                    startSyncTimer();
-                }
-            }
         }
 
-        // Sync to target slide
+        // Sync to target slide - audio will start in nextSlideLocal() for slide 0
         currentSlide = targetSlide;
         nextSlideLocal();
     }
@@ -381,7 +349,7 @@ function handleAudioEnded() {
 async function nextSlide() {
     const nextBtn = document.getElementById('nextBtn');
 
-    // On first click, show PRD Sound and start audio presentation
+    // On first click, show PRD Sound and start presentation
     if (!soundStarted) {
         // Update Supabase FIRST to sync with all clients (BEFORE changing local state)
         if (!isLocalAction) {
@@ -399,18 +367,7 @@ async function nextSlide() {
         // Hide the button during auto-presentation
         nextBtn.style.display = 'none';
 
-        // Start audio playback
-        if (audioPlayer) {
-            try {
-                await audioPlayer.play();
-                audioStartTime = Date.now();
-                console.log('Audio started');
-            } catch (error) {
-                console.error('Error playing audio:', error);
-            }
-        }
-
-        // Show first slide
+        // Show first slide - this will trigger audio in nextSlideLocal
         currentSlide = 0;
         nextSlideLocal();
     }
@@ -447,6 +404,18 @@ function nextSlideLocal() {
         setTimeout(() => {
             textContent.classList.remove('slide-in');
             textContent.classList.add('show');
+
+            // Start audio when first slide appears (currentSlide === 0)
+            if (currentSlide === 0 && audioPlayer && !audioPlayer.paused === false) {
+                audioPlayer.play().then(() => {
+                    audioStartTime = Date.now();
+                    console.log('Audio started on first slide display');
+                }).catch(error => {
+                    console.error('Error playing audio on slide display:', error);
+                    // Start timer fallback if audio still fails
+                    startSyncTimer();
+                });
+            }
         }, 100);
 
         // Update progress
