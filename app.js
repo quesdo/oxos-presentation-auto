@@ -191,6 +191,10 @@ async function syncToSlide(targetSlide, audioTimestamp) {
         soundStarted = true;
         isPresentationRunning = true;
 
+        // Advance to first slide immediately (before trying audio)
+        currentSlide = 0;
+        nextSlideLocal();
+
         // Hide the button during auto-presentation
         nextBtn.style.display = 'none';
 
@@ -205,13 +209,11 @@ async function syncToSlide(targetSlide, audioTimestamp) {
                 audioStartTime = Date.now();
                 console.log('Audio started (synced)');
             } catch (error) {
-                console.error('Error playing audio:', error);
+                console.error('Error playing audio - autoplay blocked. Slides will advance without audio:', error);
+                // Continue with slide progression even if audio fails
+                // User can manually unmute or the audio might start on next user interaction
             }
         }
-
-        // Advance to first slide
-        currentSlide = 0;
-        nextSlideLocal();
     } else if (targetSlide > currentSlide) {
         // Sync forward progression (someone else advanced)
         // Make sure presentation is running
@@ -231,7 +233,8 @@ async function syncToSlide(targetSlide, audioTimestamp) {
                     await audioPlayer.play();
                     console.log('Audio started (synced)');
                 } catch (error) {
-                    console.error('Error playing audio:', error);
+                    console.error('Error playing audio - autoplay blocked. Slides will advance without audio:', error);
+                    // Continue with slide progression even if audio fails
                 }
             }
         }
