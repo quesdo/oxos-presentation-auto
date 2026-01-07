@@ -46,6 +46,7 @@ let autoProgressTimer = null; // Timer for auto progression
 let isPresentationRunning = false; // Track if presentation is running
 let audioPlayer = null; // Audio element
 let audioStartTime = null; // Track when audio started
+let syncTimer = null; // Timer for syncing when audio doesn't play
 
 // ===== SDK INTEGRATION =====
 // Function to send visibility messages to the SDK platform
@@ -209,9 +210,9 @@ async function syncToSlide(targetSlide, audioTimestamp) {
                 audioStartTime = Date.now();
                 console.log('Audio started (synced)');
             } catch (error) {
-                console.error('Error playing audio - autoplay blocked. Slides will advance without audio:', error);
-                // Continue with slide progression even if audio fails
-                // User can manually unmute or the audio might start on next user interaction
+                console.error('Error playing audio - autoplay blocked. Using timer fallback:', error);
+                // Start timer-based sync when audio can't play
+                startSyncTimer();
             }
         }
     } else if (targetSlide > currentSlide) {
@@ -233,8 +234,9 @@ async function syncToSlide(targetSlide, audioTimestamp) {
                     await audioPlayer.play();
                     console.log('Audio started (synced)');
                 } catch (error) {
-                    console.error('Error playing audio - autoplay blocked. Slides will advance without audio:', error);
-                    // Continue with slide progression even if audio fails
+                    console.error('Error playing audio - autoplay blocked. Using timer fallback:', error);
+                    // Start timer-based sync when audio can't play
+                    startSyncTimer();
                 }
             }
         }
@@ -308,7 +310,7 @@ function initPresentation() {
 }
 
 // Handle audio time updates to sync slides
-function handleAudioTimeUpdate() {
+async function handleAudioTimeUpdate() {
     if (!isPresentationRunning || !audioPlayer) return;
 
     const currentTime = audioPlayer.currentTime;
@@ -316,11 +318,50 @@ function handleAudioTimeUpdate() {
     // Find the next slide that should be shown based on audio time
     for (let i = slides.length - 1; i >= 0; i--) {
         if (currentTime >= slides[i].timestamp && currentSlide < i) {
+            // Update Supabase to sync all clients
+            if (!isLocalAction) {
+                await updateSession({
+                    current_slide: i,
+                    audio_timestamp: currentTime
+                });
+            }
+
             currentSlide = i;
             nextSlideLocal();
             break;
         }
     }
+}
+
+// Fallback timer for when audio doesn't play (autoplay blocked)
+function startSyncTimer() {
+    if (syncTimer) clearInterval(syncTimer);
+
+    const startTime = Date.now();
+    syncTimer = setInterval(() => {
+        if (!isPresentationRunning) {
+            clearInterval(syncTimer);
+            return;
+        }
+
+        // Calculate elapsed time in seconds
+        const elapsed = (Date.now() - startTime) / 1000;
+
+        // Find the next slide that should be shown based on elapsed time
+        for (let i = slides.length - 1; i >= 0; i--) {
+            if (elapsed >= slides[i].timestamp && currentSlide < i) {
+                currentSlide = i;
+                nextSlideLocal();
+                break;
+            }
+        }
+
+        // Stop timer if we've reached the last slide
+        if (currentSlide === slides.length - 1 && elapsed > slides[slides.length - 1].timestamp + 10) {
+            clearInterval(syncTimer);
+            handleAudioEnded();
+        }
+    }, 100); // Check every 100ms
 }
 
 // Handle audio ended
@@ -459,10 +500,14 @@ function restartPresentationLocal() {
         audioPlayer.currentTime = 0;
     }
 
-    // Clear any running timer
+    // Clear any running timers
     if (autoProgressTimer) {
         clearTimeout(autoProgressTimer);
         autoProgressTimer = null;
+    }
+    if (syncTimer) {
+        clearInterval(syncTimer);
+        syncTimer = null;
     }
 
     // Hide all media
