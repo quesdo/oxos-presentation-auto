@@ -192,9 +192,9 @@ async function syncToSlide(targetSlide, audioTimestamp) {
         soundStarted = true;
         isPresentationRunning = true;
 
-        // HIDE AS IS Product and SHOW PSY Content immediately when starting
+        // HIDE AS IS Product and SHOW PRD Content immediately when starting
         hideASISProduct();
-        showMedia("PSY Content");
+        showMedia("PRD Content");
 
         // Hide the button during auto-presentation
         nextBtn.style.display = 'none';
@@ -373,9 +373,9 @@ async function nextSlide() {
         soundStarted = true;
         isPresentationRunning = true;
 
-        // HIDE AS IS Product and SHOW PSY Content immediately when starting
+        // HIDE AS IS Product and SHOW PRD Content immediately when starting
         hideASISProduct();
-        showMedia("PSY Content");
+        showMedia("PRD Content");
 
         // Hide the button during auto-presentation
         nextBtn.style.display = 'none';
@@ -403,11 +403,6 @@ function nextSlideLocal() {
         // Show new media if present (without hiding previous ones)
         if (slide.media) {
             showMedia(slide.media);
-
-            // Hide AS IS Product when showing PRD Content (last media)
-            if (slide.media === "PRD Content") {
-                hideASISProduct();
-            }
         }
 
         // Animate in new text
