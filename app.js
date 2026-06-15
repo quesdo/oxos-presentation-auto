@@ -29,6 +29,11 @@ const slides = [
         text: "With OXOS, industry moves from reactive execution\nto a predictive process, continuously auditable.",
         media: "PRD Content",
         timestamp: 59 // 59s
+    },
+    {
+        text: "OXOS Virtual Twin\nWind Turbine — Live 3D Experience",
+        media: "Eolienne",
+        timestamp: 72 // 72s
     }
 ];
 
@@ -78,7 +83,7 @@ function hideMedia(mediaName) {
 
 // Function to hide all media
 function hideAllMedia() {
-    const allMedia = ["PRD 1", "PRD 2", "PRD 3", "PRD 4", "PRD 5", "PRD Content"];
+    const allMedia = ["PRD 1", "PRD 2", "PRD 3", "PRD 4", "PRD 5", "PRD Content", "Eolienne"];
     allMedia.forEach(media => {
         toggleVisibility(media, false);
     });
